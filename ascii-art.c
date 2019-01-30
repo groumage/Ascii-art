@@ -27,7 +27,6 @@ typedef enum {
 
 typedef struct {
 	double square_radius;
-	double angle;
 } circle_t;
 
 typedef struct {
@@ -57,6 +56,7 @@ typedef struct {
 	coord_t center_gravity;
 	double rotation_angle;
 	shape_t shape;
+	double angle;
 	caracteristic_t caracteristic;
 } figure_t;
 
@@ -85,25 +85,38 @@ coord_t inv_translate_point (coord_t p, coord_t v) {
 	return c;
 }
 
+// return the translate of a point p by a vector v
+coord_t translate_point (coord_t p, coord_t v) {
+	coord_t c = {p.x + v.x, p.y + v.y};
+	return c;
+}
+
 // return the invert rotate of a point by and angle theta
 coord_t inv_rotate_point (coord_t p, double theta) {
 	coord_t c = {p.x * cos(-theta) - p.y * sin(-theta), p.x * sin(-theta) + p.y * cos(-theta)};
 	return c;
 }
 
-// return a circle with a radius radius and all other parameter by default
+// return the rotate of a point by and angle theta
+coord_t rotate_point (coord_t p, double theta) {
+	coord_t c = {p.x * cos(theta) - p.y * sin(theta), p.x * sin(theta) + p.y * cos(theta)};
+	return c;
+}
+
+// return a circle with a radius of radius and all other parameters to default
 figure_t create_circle (double radius) {
 	figure_t f;
 	f.color = -1;
 	f.symbol = '+';
 	f.center_gravity = coordinate(0,0);
 	f.rotation_angle = 0;
+	f.angle = 360;
 	f.shape = circle;
-	f.caracteristic.circle.square_radius = radius * radius;	
+	f.caracteristic.circle.square_radius = radius * radius;
 	return f;
 }
 
-// return a rectangle with a width width, a height height and all other parameter by default
+// return a rectangle with a width of width, a height of height and all other parameters to default
 figure_t create_rectangle (double width, double height) {
 	figure_t f;
 	f.color = -1;
@@ -111,11 +124,13 @@ figure_t create_rectangle (double width, double height) {
 	f.center_gravity = coordinate(0,0);
 	f.rotation_angle = 0;
 	f.shape = rectangle;
+	f.angle = 360;
 	f.caracteristic.rectangle.half_width = width/2;
 	f.caracteristic.rectangle.half_height = height/2;
 	return f;
 }
 
+// return a line with a length of length and all other parameters to default
 figure_t create_line (double length) {
 	figure_t f;
 	f.color = -1;
@@ -123,10 +138,12 @@ figure_t create_line (double length) {
 	f.center_gravity = coordinate(0,0);
 	f.rotation_angle = 0;
 	f.shape = line;
+	f.angle = 360;
 	f.caracteristic.line.half_length = length/2;
 	return f;
 }
 
+// return a disc with a radius of radius_outside and a thickness of (radius_outside - radious_inside)
 figure_t create_disc (double radius_inside, double radius_outside) {
 	figure_t f;
 	f.color = -1;
@@ -134,6 +151,7 @@ figure_t create_disc (double radius_inside, double radius_outside) {
 	f.center_gravity = coordinate(0,0);
 	f.rotation_angle = 0;
 	f.shape = disc;
+	f.angle = 360;
 	f.caracteristic.disc.square_radius_inside = radius_inside * radius_inside;
 	f.caracteristic.disc.square_radius_outside = radius_outside * radius_outside;
 	return f;
@@ -146,6 +164,11 @@ figure_t color (figure_t f, color_t c) {
 
 figure_t symbol (figure_t f, char c) {
 	f.symbol = c;
+	return f;
+}
+
+figure_t angle (figure_t f, double a) {
+	f.angle = a;
 	return f;
 }
 
@@ -164,22 +187,51 @@ double absolute (double p) {
   else return p;
 }
 
+// return the angle in degre of the point, reliative to the circle
+// this function cimpute a scalar product
+double relative_angle (figure_t f, coord_t a) {
+	double angle_deg = 0;
+	// if the point a has a negativ sinus, the point is tranform to it's opposite
+	// this allow calcul of angle above 180 degres
+	if (a.y < 0) {
+		a.x = -a.x;
+		a.y = -a.y;
+		angle_deg += 180;
+	}
+	coord_t o = coordinate(0, 0);
+	coord_t b = coordinate(sqrt(f.caracteristic.circle.square_radius), 0);
+	coord_t vect_oa = coordinate(a.x - o.x, a.y - o.y);
+	coord_t vect_ob = coordinate(b.x - o.x, b.y - o.y);
+	double norm_oa = sqrt(vect_oa.x * vect_oa.x + vect_oa.y * vect_oa.y);
+	double norm_ob = sqrt(vect_ob.x * vect_ob.x + vect_ob.y * vect_ob.y);
+	double cos_angle = (vect_oa.x * vect_ob.x + vect_oa.y * vect_ob.y)/(norm_oa * norm_ob);
+	double angle_rad = acos(cos_angle);
+	angle_deg += angle_rad * 180/M_PI;
+	return angle_deg;
+}
+
 color_t intersect (coord_t p, figure_t f, double grain) {
-	coord_t p1 = inv_translate_point(p, f.center_gravity);
-	coord_t p2 = inv_rotate_point(p1, f.rotation_angle);
+	coord_t a_tmp = inv_translate_point(p, f.center_gravity);
+	coord_t a = inv_rotate_point(a_tmp, f.rotation_angle);
+	if (a.x == 0 && a.y == 0 && f.shape != disc)
+		return f.symbol;
 	if (f.shape == circle)
-		if (p2.x * p2.x + p2.y * p2.y <= f.caracteristic.circle.square_radius)
-			return f.symbol;
+		if (a.x * a.x + a.y * a.y <= f.caracteristic.circle.square_radius)
+			if (relative_angle(f, a) <= f.angle)
+				return f.symbol;
 	if (f.shape == rectangle)
-		if (absolute(p2.x) <= f.caracteristic.rectangle.half_width && absolute(p2.y) <= f.caracteristic.rectangle.half_height)
-			return f.symbol;
+		if (absolute(a.x) <= f.caracteristic.rectangle.half_width && absolute(a.y) <= f.caracteristic.rectangle.half_height)
+			if (relative_angle(f, a) <= f.angle)
+				return f.symbol;
 	if (f.shape == line)
-		if (absolute(p2.x) <= f.caracteristic.line.half_length && absolute(p2.y) <= grain)
-			return f.symbol;
+		if (absolute(a.x) <= f.caracteristic.line.half_length && absolute(a.y) <= grain)
+			if (relative_angle(f, a) <= f.angle)
+				return f.symbol;
 	if (f.shape == disc)
-		if (p2.x * p2.x + p2.y * p2.y <= f.caracteristic.disc.square_radius_outside &&
-			f.caracteristic.disc.square_radius_inside <= p2.x * p2.x + p2.y * p2.y)
-			return f.symbol;
+		if (a.x * a.x + a.y * a.y <= f.caracteristic.disc.square_radius_outside &&
+			f.caracteristic.disc.square_radius_inside <= a.x * a.x + a.y * a.y)
+			if (relative_angle(f, a) <= f.angle)
+				return f.symbol;
 	return 0;
 } 
 
@@ -246,41 +298,46 @@ void paint (image_t img) {
 
 int main() {
   figure_t f;
-  image_t img = image(30,30,1);
-
-  //f = rotate(f, 90 * M_PI / 180);
-
-  /*f = create_circle(10);
-  f = translate(f, 15, 15);
-  f = color(f, -1);
-  f = symbol(f, '0');
-  img = append(img,f);*/
-
-  f = create_line(19);
-  f = translate(f, 16, 20);
-  f = rotate(f, -45 * M_PI / 180);
-  f = color(f, yellow);
-  f = symbol(f, '*');
-  img = append(img,f);
+  image_t img = image(20,50,1);
 
   f = create_rectangle(3,10);
-  f = translate(f, 10, 8);
-  f = color(f, yellow);
+  f = translate(f, 2, 8);
   f = symbol(f, 'T');
+  f = color(f, red);
   img = append(img,f);
 
   f = create_rectangle(10,3);
-  f = translate(f, 17, 8);
-  f = color(f, yellow);
+  f = translate(f, 9, 8);
   f = symbol(f, 'T');
+  f = color(f, red);
+  img = append(img,f);
+
+  f = create_line(19);
+  f = translate(f, 8, 21);
+  f = rotate(f, -45 * M_PI / 180);
+  f = symbol(f, '*');
+  f = color(f, black);
   img = append(img,f);
 
   f = create_disc(4,6);
-  f = translate(f, 16, 20);
+  f = translate(f, 8, 21);
   f = symbol(f, 'O');
-  f = color(f, yellow);
+  f = color(f, black);
   img = append(img,f);
  
+  f = create_rectangle(13,3);
+  f = translate(f, 8, 34);
+  f = symbol(f,'P');
+  f = color(f, blue);
+  img = append(img,f);
+
+  f = create_disc(2,4);
+  f = translate(f, 6, 36);
+  f = symbol(f, 'P');
+  f = angle(f, 180);
+  f = color(f, blue);
+  img = append(img,f);
+
   paint(img);
   return EXIT_SUCCESS;
 }
