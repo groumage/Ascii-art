@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <math.h>
 
-#define max_figs 10
+#define max_figs 20
 
 typedef enum {
 	black,
@@ -182,6 +182,7 @@ figure_t rotate (figure_t f, double dt) {
 	return f;
 }
 
+// return the absolute value of a number
 double absolute (double p) {
   if (p < 0) return -p;
   else return p;
@@ -279,14 +280,20 @@ void paint (image_t img) {
 	for (int i = 0; i < img.width; i++) {
 		for (int j = 0; j < img.height; j++) {
 			bool is_print = false;
-			for (int k = 0; k < img.nb_figs; k++) {
-				color_t tmp = intersect(coordinate(i, j), img.figs[k], img.grain);
-				if (tmp != 0) {
-					change_color(img.figs[k].color);
-					printf("%c", tmp);
-					change_color(-1);
-					is_print = true;
-					k = img.nb_figs;
+			if (i == 0 || i == img.width - 1 || j == 0 || j == img.height - 1) {
+				printf("°");
+				is_print = true;
+			}
+			else {
+				for (int k = 0; k < img.nb_figs; k++) {
+					color_t tmp = intersect(coordinate(i, j), img.figs[k], img.grain);
+					if (tmp != 0) {
+						change_color(img.figs[k].color);
+						printf("%c", tmp);
+						change_color(-1);
+						is_print = true;
+						k = img.nb_figs;
+					}
 				}
 			}
 			if (is_print == false)
@@ -298,7 +305,9 @@ void paint (image_t img) {
 
 int main() {
   figure_t f;
-  image_t img = image(20,50,1);
+  image_t img = image(18,44,1);
+
+  // logo 1
 
   f = create_rectangle(3,10);
   f = translate(f, 2, 8);
@@ -337,6 +346,86 @@ int main() {
   f = angle(f, 180);
   f = color(f, blue);
   img = append(img,f);
+
+  // logo 2
+
+  /*int decalage = 44;
+
+  f = create_rectangle(3,10);
+  f = translate(f, 2, 8 + decalage);
+  f = symbol(f, 'T');
+  img = append(img,f);
+
+  f = create_rectangle(10,3);
+  f = translate(f, 9, 8 + decalage);
+  f = symbol(f, 'T');
+  img = append(img,f);
+
+  f = create_line(19);
+  f = translate(f, 8, 21 + decalage);
+  f = rotate(f, -45 * M_PI / 180);
+  f = symbol(f, '*');
+  img = append(img,f);
+
+  f = create_disc(4,6);
+  f = translate(f, 8, 21 + decalage);
+  f = symbol(f, 'O');
+  img = append(img,f);
+ 
+  f = create_rectangle(13,3);
+  f = translate(f, 8, 34 + decalage);
+  f = symbol(f,'P');
+  f = color(f, red);
+  img = append(img,f);
+
+  f = create_disc(2,4);
+  f = translate(f, 6, 36 + decalage);
+  f = symbol(f, 'P');
+  f = angle(f, 180);
+  f = color(f, red);
+  img = append(img,f);
+
+  // logo 3
+
+  int decalage_2 = 88;
+
+  f = create_rectangle(3,10);
+  f = translate(f, 2, 8 + decalage_2);
+  f = symbol(f, 'T');
+  f = color(f, yellow);
+  img = append(img,f);
+
+  f = create_rectangle(10,3);
+  f = translate(f, 9, 8 + decalage_2);
+  f = symbol(f, 'T');
+  f = color(f, yellow);
+  img = append(img,f);
+
+  f = create_line(19);
+  f = translate(f, 8, 21 + decalage_2);
+  f = rotate(f, -45 * M_PI / 180);
+  f = symbol(f, '*');
+  f = color(f, yellow);
+  img = append(img,f);
+
+  f = create_disc(4,6);
+  f = translate(f, 8, 21 + decalage_2);
+  f = symbol(f, 'O');
+  f = color(f, yellow);
+  img = append(img,f);
+ 
+  f = create_rectangle(13,3);
+  f = translate(f, 8, 34 + decalage_2);
+  f = symbol(f,'P');
+  f = color(f, yellow);
+  img = append(img,f);
+
+  f = create_disc(2,4);
+  f = translate(f, 6, 36 + decalage_2);
+  f = symbol(f, 'P');
+  f = angle(f, 180);
+  f = color(f, yellow);
+  img = append(img,f);*/
 
   paint(img);
   return EXIT_SUCCESS;
