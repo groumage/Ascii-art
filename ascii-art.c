@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <math.h>
 
-#define max_figs 20
+#define MAX_FIGS 20
 
 typedef enum {
 	black,
@@ -30,8 +30,8 @@ typedef struct {
 } circle_t;
 
 typedef struct {
-	double square_radius_outside;
-	double square_radius_inside;
+	circle_t circle_inside;
+	circle_t circle_outside;
 } disc_t;
 
 typedef struct {
@@ -64,7 +64,7 @@ typedef struct {
 	unsigned int width;
 	unsigned int height;
 	double grain;
-	figure_t figs[max_figs];
+	figure_t figs[MAX_FIGS];
 	int nb_figs;
 } image_t;
 
@@ -94,12 +94,6 @@ coord_t translate_point (coord_t p, coord_t v) {
 // return the invert rotate of a point by and angle theta
 coord_t inv_rotate_point (coord_t p, double theta) {
 	coord_t c = {p.x * cos(-theta) - p.y * sin(-theta), p.x * sin(-theta) + p.y * cos(-theta)};
-	return c;
-}
-
-// return the rotate of a point by and angle theta
-coord_t rotate_point (coord_t p, double theta) {
-	coord_t c = {p.x * cos(theta) - p.y * sin(theta), p.x * sin(theta) + p.y * cos(theta)};
 	return c;
 }
 
@@ -152,8 +146,8 @@ figure_t create_disc (double radius_inside, double radius_outside) {
 	f.rotation_angle = 0;
 	f.shape = disc;
 	f.angle = 360;
-	f.caracteristic.disc.square_radius_inside = radius_inside * radius_inside;
-	f.caracteristic.disc.square_radius_outside = radius_outside * radius_outside;
+	f.caracteristic.disc.circle_inside.square_radius = radius_inside * radius_inside;
+	f.caracteristic.disc.circle_outside.square_radius = radius_outside * radius_outside;
 	return f;
 }
 
@@ -229,8 +223,8 @@ color_t intersect (coord_t p, figure_t f, double grain) {
 			if (relative_angle(f, a) <= f.angle)
 				return f.symbol;
 	if (f.shape == disc)
-		if (a.x * a.x + a.y * a.y <= f.caracteristic.disc.square_radius_outside &&
-			f.caracteristic.disc.square_radius_inside <= a.x * a.x + a.y * a.y)
+		if (a.x * a.x + a.y * a.y <= f.caracteristic.disc.circle_outside.square_radius &&
+			f.caracteristic.disc.circle_inside.square_radius <= a.x * a.x + a.y * a.y)
 			if (relative_angle(f, a) <= f.angle)
 				return f.symbol;
 	return 0;
@@ -246,7 +240,7 @@ image_t image (unsigned int width, unsigned int height, double grain) {
 }
 
 image_t append (image_t img, figure_t f) {
-	if (img.nb_figs <= max_figs - 1) {
+	if (img.nb_figs <= MAX_FIGS - 1) {
 		img.figs[img.nb_figs] = f;
 		img.nb_figs = img.nb_figs + 1;
 	}
@@ -277,23 +271,17 @@ void change_color (color_t c) {
 }
 
 void paint (image_t img) {
-	for (int i = 0; i < img.width; i++) {
-		for (int j = 0; j < img.height; j++) {
+	for (int i = 0; i < img.height; i++) {
+		for (int j = 0; j < img.width; j++) {
 			bool is_print = false;
-			if (i == 0 || i == img.width - 1 || j == 0 || j == img.height - 1) {
-				printf("°");
-				is_print = true;
-			}
-			else {
-				for (int k = 0; k < img.nb_figs; k++) {
-					color_t tmp = intersect(coordinate(i, j), img.figs[k], img.grain);
-					if (tmp != 0) {
-						change_color(img.figs[k].color);
-						printf("%c", tmp);
-						change_color(-1);
-						is_print = true;
-						k = img.nb_figs;
-					}
+			for (int k = 0; k < img.nb_figs; k++) {
+				color_t tmp = intersect(coordinate(i, j), img.figs[k], img.grain);
+				if (tmp != 0) {
+					change_color(img.figs[k].color);
+					printf("%c", tmp);
+					change_color(-1);
+					is_print = true;
+					k = img.nb_figs;
 				}
 			}
 			if (is_print == false)
@@ -303,130 +291,32 @@ void paint (image_t img) {
 	}
 }
 
+// TEST ZONE
+
 int main() {
   figure_t f;
-  image_t img = image(18,44,1);
+  image_t img = image(50,30,0.5);
 
-  // logo 1
-
-  f = create_rectangle(3,10);
-  f = translate(f, 2, 8);
-  f = symbol(f, 'T');
-  f = color(f, red);
-  img = append(img,f);
-
-  f = create_rectangle(10,3);
-  f = translate(f, 9, 8);
-  f = symbol(f, 'T');
-  f = color(f, red);
-  img = append(img,f);
-
-  f = create_line(19);
-  f = translate(f, 8, 21);
-  f = rotate(f, -45 * M_PI / 180);
+  f = create_line(30);
+  f = translate(f, 15, 20);
+  f = rotate(f, -60 * M_PI / 180);
   f = symbol(f, '*');
-  f = color(f, black);
-  img = append(img,f);
-
-  f = create_disc(4,6);
-  f = translate(f, 8, 21);
-  f = symbol(f, 'O');
-  f = color(f, black);
+  f = color(f, red);
   img = append(img,f);
  
-  f = create_rectangle(13,3);
-  f = translate(f, 8, 34);
-  f = symbol(f,'P');
+  f = create_rectangle(10,7);
+  f = translate(f, 7, 10);
+  f = rotate(f, 45 * M_PI / 180);
   f = color(f, blue);
   img = append(img,f);
-
-  f = create_disc(2,4);
-  f = translate(f, 6, 36);
-  f = symbol(f, 'P');
-  f = angle(f, 180);
-  f = color(f, blue);
-  img = append(img,f);
-
-  // logo 2
-
-  /*int decalage = 44;
-
-  f = create_rectangle(3,10);
-  f = translate(f, 2, 8 + decalage);
-  f = symbol(f, 'T');
-  img = append(img,f);
-
-  f = create_rectangle(10,3);
-  f = translate(f, 9, 8 + decalage);
-  f = symbol(f, 'T');
-  img = append(img,f);
-
-  f = create_line(19);
-  f = translate(f, 8, 21 + decalage);
-  f = rotate(f, -45 * M_PI / 180);
-  f = symbol(f, '*');
-  img = append(img,f);
-
-  f = create_disc(4,6);
-  f = translate(f, 8, 21 + decalage);
-  f = symbol(f, 'O');
-  img = append(img,f);
  
-  f = create_rectangle(13,3);
-  f = translate(f, 8, 34 + decalage);
-  f = symbol(f,'P');
-  f = color(f, red);
-  img = append(img,f);
-
-  f = create_disc(2,4);
-  f = translate(f, 6, 36 + decalage);
-  f = symbol(f, 'P');
-  f = angle(f, 180);
-  f = color(f, red);
-  img = append(img,f);
-
-  // logo 3
-
-  int decalage_2 = 88;
-
-  f = create_rectangle(3,10);
-  f = translate(f, 2, 8 + decalage_2);
-  f = symbol(f, 'T');
-  f = color(f, yellow);
-  img = append(img,f);
-
-  f = create_rectangle(10,3);
-  f = translate(f, 9, 8 + decalage_2);
-  f = symbol(f, 'T');
-  f = color(f, yellow);
-  img = append(img,f);
-
-  f = create_line(19);
-  f = translate(f, 8, 21 + decalage_2);
-  f = rotate(f, -45 * M_PI / 180);
-  f = symbol(f, '*');
-  f = color(f, yellow);
-  img = append(img,f);
-
-  f = create_disc(4,6);
-  f = translate(f, 8, 21 + decalage_2);
+  f = create_circle(12);
+  f = translate(f, 15, 20);
   f = symbol(f, 'O');
   f = color(f, yellow);
   img = append(img,f);
- 
-  f = create_rectangle(13,3);
-  f = translate(f, 8, 34 + decalage_2);
-  f = symbol(f,'P');
-  f = color(f, yellow);
-  img = append(img,f);
-
-  f = create_disc(2,4);
-  f = translate(f, 6, 36 + decalage_2);
-  f = symbol(f, 'P');
-  f = angle(f, 180);
-  f = color(f, yellow);
-  img = append(img,f);*/
 
   paint(img);
   return EXIT_SUCCESS;
 }
+
